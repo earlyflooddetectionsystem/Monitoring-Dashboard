@@ -164,9 +164,9 @@ function ambilDataTinggiAir() {
       console.log("Data tinggi air belum ada.");
     }
   });
-}
+}*/
 
-ambilDataTinggiAir();*/
+ambilDataTinggiAir();
 
 
 // ===================== CHARTS =====================
