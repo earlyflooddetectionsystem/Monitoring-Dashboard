@@ -1,20 +1,36 @@
 // SIDEBAR TOGGLE
 let sidebarOpen = false;
 const sidebar = document.getElementById("sidebar");
+let buttonValue = false;
 
-function openSidebar() {
+window.openSidebar = function () {
   if (!sidebarOpen) {
     sidebar.classList.add("sidebar-responsive");
     sidebarOpen = true;
   }
 }
 
-function closeSidebar() {
+window.closeSidebar = function () {
   if (sidebarOpen) {
     sidebar.classList.remove("sidebar-responsive");
     sidebarOpen = false;
   }
 }
+
+document.getElementById('push-button').addEventListener('click', function() 
+{
+  buttonValue = !buttonValue; // Toggle the boolean value
+  const indicator = document.getElementById('indicator');
+  // Change the icon based on buttonValue
+  if (buttonValue) 
+  {
+    indicator.textContent = 'notifications'; // Change icon to "notifications"
+  }
+  else 
+  {
+    indicator.textContent = 'notifications_active'; // Change icon back to "notifications_active"
+  }
+});
 
 // ===================== FETCH DATA BMKG =====================
 const api_url =
@@ -82,6 +98,52 @@ const db = getDatabase(app);
 
 // ===================== AMBIL DATA TINGGI AIR =====================
 function ambilDataTinggiAir() {
+  // Pastikan path "akuarium/jarak_air" sesuai dengan yang dikirim ESP32 tadi
+  const tinggiAirRef = ref(db, "water_level"); // sesuaikan path di Firebase
+
+  onValue(tinggiAirRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const jarak = snapshot.val(); // Ambil nilai angka dari Firebase
+      let kategori = "";
+      let warnaKategori = "";
+
+      // LOGIKA KATEGORI (Sesuaikan angka threshold sesuai kebutuhan akuarium)
+      if (jarak > 18) {
+        kategori = "AMAN";
+        warnaKategori = "#2ecc71"; // Hijau
+      } else if (jarak <= 18 && jarak > 8) {
+        kategori = "WASPADA";
+        warnaKategori = "#f1c40f"; // Kuning
+      } else {
+        kategori = "BAHAYA";
+        warnaKategori = "#e74c3c"; // Merah
+      }
+
+      // 1. Update teks angka jarak (Card index ke-3)
+      document.querySelectorAll(".card span.font-weight-bold")[3].textContent = 
+        jarak.toFixed(1) + " cm";
+
+      // 2. Update Tampilan Kategori di Dashboard
+      // Pastikan kamu punya elemen dengan ID 'status-text' di HTML-mu
+      const statusElement = document.getElementById("status-info");
+      if (statusElement) {
+          statusElement.textContent = kategori;
+          statusElement.style.color = warnaKategori;
+      }
+
+      // Opsional: Log ke console untuk cek
+      console.log(`Jarak: ${jarak} cm | Status: ${kategori}`);
+
+    } else {
+      console.log("Data jarak air belum ada di Firebase.");
+    }
+  });
+}
+
+
+/*
+// ===================== AMBIL DATA TINGGI AIR =====================
+function ambilDataTinggiAir() {
   const tinggiAirRef = ref(db, "water_level"); // sesuaikan path di Firebase
 
   onValue(tinggiAirRef, (snapshot) => {
@@ -101,7 +163,7 @@ function ambilDataTinggiAir() {
   });
 }
 
-ambilDataTinggiAir();
+ambilDataTinggiAir();*/
 
 
 // ===================== CHARTS =====================
