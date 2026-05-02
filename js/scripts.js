@@ -98,45 +98,48 @@ const db = getDatabase(app);
 
 // ===================== AMBIL DATA TINGGI AIR =====================
 function ambilDataTinggiAir() {
-  // Pastikan path "akuarium/jarak_air" sesuai dengan yang dikirim ESP32 tadi
-  const tinggiAirRef = ref(db, "water_level"); // sesuaikan path di Firebase
+  // 1. Sesuaikan path Firebase (Cek di Firebase Console kamu pakai "water_level" atau "akuarium/jarak_air")
+  const tinggiAirRef = ref(db, "akuarium/jarak_air"); 
 
   onValue(tinggiAirRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const jarak = snapshot.val(); // Ambil nilai angka dari Firebase
-      let kategori = "";
-      let warnaKategori = "";
+    const angkaElement = document.getElementById("jarak-angka");
+    const kategoriElement = document.getElementById("status-kategori");
 
-      // LOGIKA KATEGORI (Sesuaikan angka threshold sesuai kebutuhan akuarium)
+    if (snapshot.exists()) {
+      const jarak = snapshot.val();
+      let kategori = "";
+      let warna = "";
+
+      // 2. Logika ambang batas (Threshold)
       if (jarak > 18) {
         kategori = "AMAN";
-        warnaKategori = "#2ecc71"; // Hijau
+        warna = "#2ecc71"; // Hijau
       } else if (jarak <= 18 && jarak > 8) {
         kategori = "WASPADA";
-        warnaKategori = "#f1c40f"; // Kuning
+        warna = "#f1c40f"; // Kuning
       } else {
         kategori = "BAHAYA";
-        warnaKategori = "#e74c3c"; // Merah
+        warna = "#e74c3c"; // Merah
       }
 
-      // 1. Update teks angka jarak (Card index ke-3)
-      document.querySelectorAll(".card span.font-weight-bold")[3].textContent = 
-        jarak.toFixed(1) + " cm";
-
-      // 2. Update Tampilan Kategori di Dashboard
-      // Pastikan kamu punya elemen dengan ID 'status-text' di HTML-mu
-      const statusElement = document.getElementById("status-info");
-      if (statusElement) {
-          statusElement.textContent = kategori;
-          statusElement.style.color = warnaKategori;
+      // 3. Update ke layar
+      if (angkaElement) {
+        angkaElement.textContent = jarak.toFixed(1) + " cm";
       }
 
-      // Opsional: Log ke console untuk cek
-      console.log(`Jarak: ${jarak} cm | Status: ${kategori}`);
+      if (kategoriElement) {
+        kategoriElement.textContent = kategori;
+        kategoriElement.style.color = warna;
+      }
+
+      console.log("Data Firebase Masuk:", jarak, kategori); // Cek di Console Browser (F12)
 
     } else {
-      console.log("Data jarak air belum ada di Firebase.");
+      if (kategoriElement) kategoriElement.textContent = "Data Kosong";
+      console.log("Snapshot tidak ada.");
     }
+  }, (error) => {
+    console.error("Firebase Error:", error);
   });
 }
 
