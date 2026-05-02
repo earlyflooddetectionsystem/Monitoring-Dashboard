@@ -99,7 +99,7 @@ const db = getDatabase(app);
 // ===================== AMBIL DATA TINGGI AIR =====================
 function ambilDataTinggiAir() {
   // 1. Sesuaikan path Firebase (Cek di Firebase Console kamu pakai "water_level" atau "akuarium/jarak_air")
-  const tinggiAirRef = ref(db, "akuarium/jarak_air"); 
+  const tinggiAirRef = ref(db, "water_level"); // sesuaikan path di Firebase
 
   onValue(tinggiAirRef, (snapshot) => {
     const angkaElement = document.getElementById("jarak-angka");
