@@ -17,20 +17,25 @@ window.closeSidebar = function () {
   }
 }
 
-document.getElementById('push-button').addEventListener('click', function() 
-{
-  buttonValue = !buttonValue; // Toggle the boolean value
-  const indicator = document.getElementById('indicator');
-  // Change the icon based on buttonValue
-  if (buttonValue) 
+const pushButton = document.getElementById('push-button');
+if (pushButton) {
+  pushButton.addEventListener('click', function() 
   {
-    indicator.textContent = 'notifications'; // Change icon to "notifications"
-  }
-  else 
-  {
-    indicator.textContent = 'notifications_active'; // Change icon back to "notifications_active"
-  }
-});
+    buttonValue = !buttonValue; // Toggle the boolean value
+    const indicator = document.getElementById('indicator');
+    if (indicator) {
+      // Change the icon based on buttonValue
+      if (buttonValue) 
+      {
+        indicator.textContent = 'notifications'; // Change icon to "notifications"
+      }
+      else 
+      {
+        indicator.textContent = 'notifications_active'; // Change icon back to "notifications_active"
+      }
+    }
+  });
+}
 
 // ===================== FETCH DATA BMKG =====================
 const api_url =
@@ -98,6 +103,42 @@ const db = getDatabase(app);
 
 // ===================== AMBIL DATA TINGGI AIR =====================
 function ambilDataTinggiAir() {
+  // SESUAIKAN PATH INI: jika di Firebase tulisannya "water_level", pakai "water_level"
+  // Jika di Firebase di dalam folder "akuarium/jarak_air", pakai itu.
+  const tinggiAirRef = ref(db, "water_level"); 
+
+  onValue(tinggiAirRef, (snapshot) => {
+    const angkaElement = document.getElementById("jarak-angka");
+    const kategoriElement = document.getElementById("status-kategori");
+
+    if (snapshot.exists()) {
+      const jarak = snapshot.val();
+      let kategori = "";
+      let warna = "";
+
+      if (jarak > 18) {
+        kategori = "AMAN";
+        warna = "#2ecc71"; 
+      } else if (jarak <= 18 && jarak > 8) {
+        kategori = "WASPADA";
+        warna = "#f1c40f"; 
+      } else {
+        kategori = "BAHAYA";
+        warna = "#e74c3c"; 
+      }
+
+      if (angkaElement) angkaElement.textContent = jarak + " cm";
+      if (kategoriElement) {
+        kategoriElement.textContent = kategori;
+        kategoriElement.style.color = warna;
+      }
+    }
+  });
+}
+
+/*
+// ===================== AMBIL DATA TINGGI AIR =====================
+function ambilDataTinggiAir() {
   const tinggiAirRef = ref(db, "water_level"); // sesuaikan path di Firebase
 
   onValue(tinggiAirRef, (snapshot) => {
@@ -115,7 +156,7 @@ function ambilDataTinggiAir() {
       console.log("Data tinggi air belum ada.");
     }
   });
-}
+}*/
 
 ambilDataTinggiAir();
 
