@@ -103,7 +103,7 @@ const db = getDatabase(app);
 
 // ===================== KONFIGURASI TELEGRAM =====================
 const TELEGRAM_TOKEN = '8329480424:AAELtBm4TyNYGeL_a0RaLzZL9KhKcm1pJuM';
-const TELEGRAM_CHAT_ID = '8329480424';
+const TELEGRAM_CHAT_ID = '@earlyflooddetectionsystem';
 
 let dataTinggiSekarang = 0;
 let statusSekarang = "MEMUAT...";
