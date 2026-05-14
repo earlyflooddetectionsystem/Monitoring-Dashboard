@@ -101,10 +101,42 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// ===================== KONFIGURASI TELEGRAM =====================
+const TELEGRAM_TOKEN = '8329480424:AAELtBm4TyNYGeL_a0RaLzZL9KhKcm1pJuM';
+const TELEGRAM_CHAT_ID = '8329480424';
+
+let dataTinggiSekarang = 0;
+let statusSekarang = "MEMUAT...";
+
+async function kirimKeTelegram(pesan) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: pesan,
+        parse_mode: 'Markdown'
+      })
+    });
+  } catch (err) {
+    console.error("Gagal kirim Telegram:", err);
+  }
+}
+
+// Interval 15 menit (15 * 60 * 1000)
+setInterval(() => {
+  const laporan = `*📊 LAPORAN BERKALA TINGGI AIR*\n\n` +
+                  `📍 Status: *${statusSekarang}*\n` +
+                  `📏 Tinggi: *${dataTinggiSekarang} cm*\n` +
+                  `⏰ Waktu: ${new Date().toLocaleString('id-ID')}`;
+  kirimKeTelegram(laporan);
+}, 10000);
+
+
 // ===================== AMBIL DATA TINGGI AIR =====================
 function ambilDataTinggiAir() {
-  // SESUAIKAN PATH INI: jika di Firebase tulisannya "water_level", pakai "water_level"
-  // Jika di Firebase di dalam folder "akuarium/jarak_air", pakai itu.
   const tinggiAirRef = ref(db, "water_level"); 
 
   onValue(tinggiAirRef, (snapshot) => {
@@ -112,7 +144,12 @@ function ambilDataTinggiAir() {
     const kategoriElement = document.getElementById("status-kategori");
 
     if (snapshot.exists()) {
-      const jarak = snapshot.val();
+      const rawJarak = snapshot.val();
+      const jarak = Math.round(Number(rawJarak));
+      
+      // Simpan ke variabel global untuk digunakan fungsi Telegram
+      dataTinggiSekarang = jarak;
+
       let kategori = "";
       let warna = "";
 
@@ -127,36 +164,21 @@ function ambilDataTinggiAir() {
         warna = "#e74c3c"; 
       }
 
+      statusSekarang = kategori; // Update status global
+
       if (angkaElement) angkaElement.textContent = jarak + " cm";
       if (kategoriElement) {
         kategoriElement.textContent = kategori;
         kategoriElement.style.color = warna;
       }
+      
+      // Update juga di card index ke-3 jika ada (berdasarkan kode lama kamu)
+      const cardWater = document.querySelectorAll(".card span.font-weight-bold")[3];
+      if(cardWater) cardWater.textContent = jarak + " cm";
+
     }
   });
 }
-
-/*
-// ===================== AMBIL DATA TINGGI AIR =====================
-function ambilDataTinggiAir() {
-  const tinggiAirRef = ref(db, "water_level"); // sesuaikan path di Firebase
-
-  onValue(tinggiAirRef, (snapshot) => {
-    if (snapshot.exists()) {
-      let tinggiAir = snapshot.val();
-
-      // kalau numeric convert ke string
-      if (typeof tinggiAir === "number") {
-        tinggiAir = tinggiAir + " cm";
-      }
-
-      document.querySelectorAll(".card span.font-weight-bold")[3].textContent =
-        tinggiAir;
-    } else {
-      console.log("Data tinggi air belum ada.");
-    }
-  });
-}*/
 
 ambilDataTinggiAir();
 
