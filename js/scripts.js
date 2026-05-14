@@ -132,7 +132,7 @@ setInterval(() => {
                   `📏 Tinggi: *${dataTinggiSekarang} cm*\n` +
                   `⏰ Waktu: ${new Date().toLocaleString('id-ID')}`;
   kirimKeTelegram(laporan);
-}, 10000);
+}, 3600000);
 
 
 // ===================== AMBIL DATA TINGGI AIR =====================
