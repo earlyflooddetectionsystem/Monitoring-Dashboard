@@ -33,15 +33,51 @@ if (pushButton) {
   });
 }
 
-// ===================== TAMPILKAN LOKASI PERMANEN =====================
-function tampilkanLokasi() {
-  const lokasiElement = document.getElementById("lokasi-info");
-  if (lokasiElement) {
-    // Silakan ganti teks ini sesuai lokasi penempatan alat PKM lo
-    lokasiElement.textContent = "Kec. Kramat Jati, Kota Jakarta Timur"; 
+
+// ===================== FETCH DATA BMKG =====================
+const api_url =
+  "https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=31.73.01.1002";
+
+// ambil data dari API
+async function ambilDataCuaca() {
+  try {
+    const res = await fetch(api_url);
+    if (!res.ok) throw new Error("Gagal ambil data API");
+    const data = await res.json();
+
+    // contoh: ambil prakiraan pertama hari pertama
+    const prakiraan = data.data[0].cuaca[0][0];
+
+    // lokasi
+    const kec = data.lokasi.kecamatan || "N/A";
+    const kota = data.lokasi.kotkab || "N/A";
+    document.getElementById(
+      "lokasi-info"
+    ).textContent = `${kec}, ${kota}`;
+
+    const suhu = prakiraan.t || "N/A";
+    const kelembapan = prakiraan.hu || "N/A";
+    const kecepatanAngin = prakiraan.ws || "N/A";
+    const arahAngin = prakiraan.wd || "N/A";
+    const desc = prakiraan.weather_desc || "N/A";
+    const img = prakiraan.image ? prakiraan.image.replace(/ /g, "%20") : "";
+
+    // update ke card dashboard
+    document.querySelectorAll(".card span.font-weight-bold")[0].textContent =
+      desc;
+    document.querySelectorAll(".card span.font-weight-bold")[1].textContent =
+      suhu + " °C";
+    document.querySelectorAll(".card span.font-weight-bold")[2].textContent =
+      kelembapan + " %";
+
+    // opsional: update chart
+    updateCharts(data.data[0].cuaca[0]);
+  } catch (err) {
+    console.error("ERROR:", err.message);
   }
 }
-tampilkanLokasi();
+
+ambilDataCuaca();
 
 
 // ===================== FIREBASE SETUP =====================
