@@ -1,4 +1,4 @@
-// SIDEBAR TOGGLE
+// ===================== SIDEBAR TOGGLE =====================
 let sidebarOpen = false;
 const sidebar = document.getElementById("sidebar");
 let buttonValue = false;
@@ -19,74 +19,36 @@ window.closeSidebar = function () {
 
 const pushButton = document.getElementById('push-button');
 if (pushButton) {
-  pushButton.addEventListener('click', function() 
-  {
+  pushButton.addEventListener('click', function() {
     buttonValue = !buttonValue; // Toggle the boolean value
     const indicator = document.getElementById('indicator');
     if (indicator) {
       // Change the icon based on buttonValue
-      if (buttonValue) 
-      {
+      if (buttonValue) {
         indicator.textContent = 'notifications'; // Change icon to "notifications"
-      }
-      else 
-      {
+      } else {
         indicator.textContent = 'notifications_active'; // Change icon back to "notifications_active"
       }
     }
   });
 }
 
-// ===================== FETCH DATA BMKG =====================
-const api_url =
-  "https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=31.73.01.1002";
-
-// ambil data dari API
-async function ambilDataCuaca() {
-  try {
-    const res = await fetch(api_url);
-    if (!res.ok) throw new Error("Gagal ambil data API");
-    const data = await res.json();
-
-    // contoh: ambil prakiraan pertama hari pertama
-    const prakiraan = data.data[0].cuaca[0][0];
-
-    // lokasi
-    const kec = data.lokasi.kecamatan || "N/A";
-    const kota = data.lokasi.kotkab || "N/A";
-    document.getElementById(
-      "lokasi-info"
-    ).textContent = `${kec}, ${kota}`;
-
-    const suhu = prakiraan.t || "N/A";
-    const kelembapan = prakiraan.hu || "N/A";
-    const kecepatanAngin = prakiraan.ws || "N/A";
-    const arahAngin = prakiraan.wd || "N/A";
-    const desc = prakiraan.weather_desc || "N/A";
-    const img = prakiraan.image ? prakiraan.image.replace(/ /g, "%20") : "";
-
-    // update ke card dashboard
-    document.querySelectorAll(".card span.font-weight-bold")[0].textContent =
-      desc;
-    document.querySelectorAll(".card span.font-weight-bold")[1].textContent =
-      suhu + " °C";
-    document.querySelectorAll(".card span.font-weight-bold")[2].textContent =
-      kelembapan + " %";
-
-    // opsional: update chart
-    updateCharts(data.data[0].cuaca[0]);
-  } catch (err) {
-    console.error("ERROR:", err.message);
+// ===================== TAMPILKAN LOKASI PERMANEN =====================
+function tampilkanLokasi() {
+  const lokasiElement = document.getElementById("lokasi-info");
+  if (lokasiElement) {
+    // Silakan ganti teks ini sesuai lokasi penempatan alat PKM lo
+    lokasiElement.textContent = "Kec. Kramat Jati, Kota Jakarta Timur"; 
   }
 }
+tampilkanLokasi();
 
-ambilDataCuaca();
 
 // ===================== FIREBASE SETUP =====================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+import { getDatabase, ref, onValue, push, set, query, limitToLast } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-// Config Firebase
+// Config Firebase asli dari project lo
 const firebaseConfig = {
   apiKey: "AIzaSyCn8IOK4iEDOCkvJDAWLU3qeuU8RkkuEJU",
   authDomain: "early-flood-detection-system-1.firebaseapp.com",
@@ -101,10 +63,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ===================== AMBIL DATA TINGGI AIR =====================
+// Variabel penampung nilai air real-time saat ini untuk di-push per jam
+let tinggiAirSekarang = 0;
+
+
+// ===================== AMBIL DATA TINGGI AIR REAL-TIME =====================
 function ambilDataTinggiAir() {
-  // SESUAIKAN PATH INI: jika di Firebase tulisannya "water_level", pakai "water_level"
-  // Jika di Firebase di dalam folder "akuarium/jarak_air", pakai itu.
   const tinggiAirRef = ref(db, "water_level"); 
 
   onValue(tinggiAirRef, (snapshot) => {
@@ -114,9 +78,14 @@ function ambilDataTinggiAir() {
     if (snapshot.exists()) {
       const rawJarak = snapshot.val();
       const jarak = Math.round(Number(rawJarak));
+      
+      // Simpan ke variabel global agar fungsi interval jam-jaman bisa baca nilai terbaru
+      tinggiAirSekarang = jarak;
+
       let kategori = "";
       let warna = "";
 
+      // Logika threshold baru yang lo tentukan tadi
       if (jarak > 200) {
         kategori = "AMAN";
         warna = "#2ecc71"; 
@@ -137,95 +106,101 @@ function ambilDataTinggiAir() {
   });
 }
 
-/*
-// ===================== AMBIL DATA TINGGI AIR =====================
-function ambilDataTinggiAir() {
-  const tinggiAirRef = ref(db, "water_level"); // sesuaikan path di Firebase
-
-  onValue(tinggiAirRef, (snapshot) => {
-    if (snapshot.exists()) {
-      let tinggiAir = snapshot.val();
-
-      // kalau numeric convert ke string
-      if (typeof tinggiAir === "number") {
-        tinggiAir = tinggiAir + " cm";
-      }
-
-      document.querySelectorAll(".card span.font-weight-bold")[3].textContent =
-        tinggiAir;
-    } else {
-      console.log("Data tinggi air belum ada.");
-    }
-  });
-}*/
-
 ambilDataTinggiAir();
 
 
-// ===================== CHARTS =====================
+// ===================== LOGIKA PENCATATAN HISTORI (TIAP 1 JAM) =====================
+function catatHistoriTiapJam() {
+  const sekarang = new Date();
+  const jamFormat = sekarang.toLocaleString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta'
+  }).replace('.', ':'); // Hasil format rapi: "14:00"
 
-// AREA CHART (dinamis update)
-let areaChart;
-function updateCharts(prakiraanHariIni) {
-  const labels = prakiraanHariIni.map((p) => p.local_datetime.split(" ")[1]);
-  const suhuSeries = prakiraanHariIni.map((p) => parseFloat(p.t));
-  const kelembapanSeries = prakiraanHariIni.map((p) => parseFloat(p.hu));
-
-  const areaChartOptions = {
-    series: [
-      {
-        name: "Suhu (°C)",
-        data: suhuSeries,
-      },
-      {
-        name: "Kelembapan (%)",
-        data: kelembapanSeries,
-      },
-    ],
-    chart: {
-      height: 350,
-      type: "area",
-      toolbar: {
-        show: false,
-      },
-    },
-    colors: ["#4f35a1", "#246dec"],
-    dataLabels: {
-      enabled: false,
-    },
-    stroke: {
-      curve: "smooth",
-    },
-    labels: labels,
-    markers: {
-      size: 0,
-    },
-    yaxis: [
-      {
-        title: {
-          text: "Suhu (°C)",
-        },
-      },
-      {
-        opposite: true,
-        title: {
-          text: "Kelembapan (%)",
-        },
-      },
-    ],
-    tooltip: {
-      shared: true,
-      intersect: false,
-    },
-  };
-
-  if (!areaChart) {
-    areaChart = new ApexCharts(
-      document.querySelector("#area-chart"),
-      areaChartOptions
-    );
-    areaChart.render();
-  } else {
-    areaChart.updateOptions(areaChartOptions);
-  }
+  const historiRef = ref(db, "histori");
+  const dataBaruRef = push(historiRef);
+  
+  // Push data terbaru ke node /histori di Firebase
+  set(dataBaruRef, {
+    waktu: jamFormat,
+    tinggi: tinggiAirSekarang
+  }).then(() => {
+    console.log("Log jam-jaman berhasil disimpan:", jamFormat, "->", tinggiAirSekarang, "cm");
+  });
 }
+
+// Menjalankan fungsi pencatatan otomatis setiap 1 jam sekali (3600000 milidetik)
+setInterval(catatHistoriTiapJam, 3600000);
+
+
+// ===================== CHARTS (BACA DARI NODE /histori) =====================
+let areaChart;
+
+function tampilkanGrafikHistori() {
+  // Hanya ambil 10 data history terakhir dari Firebase biar grafik gak kepenuhan dan rapi
+  const historiRef = query(ref(db, "histori"), limitToLast(10));
+
+  onValue(historiRef, (snapshot) => {
+    const labelWaktu = [];
+    const seriesTinggiAir = [];
+
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const item = childSnapshot.val();
+        labelWaktu.push(item.waktu);     // Dimasukkan ke sumbu X grafik (Jam)
+        seriesTinggiAir.push(item.tinggi); // Dimasukkan ke sumbu Y grafik (Ketinggian Air)
+      });
+    }
+
+    const areaChartOptions = {
+      series: [
+        {
+          name: "Tinggi Air (cm)",
+          data: seriesTinggiAir,
+        }
+      ],
+      chart: {
+        height: 350,
+        type: "area",
+        toolbar: {
+          show: false,
+        },
+      },
+      colors: ["#246dec"], // Warna biru air royal
+      dataLabels: {
+        enabled: true, // Memunculkan angka di tiap titik grafik, membantu banget buat screenshot laporan PKM
+      },
+      stroke: {
+        curve: "smooth",
+      },
+      labels: labelWaktu,
+      markers: {
+        size: 5,
+      },
+      yaxis: {
+        title: {
+          text: "Ketinggian (cm)",
+        },
+      },
+      tooltip: {
+        shared: true,
+        intersect: false,
+      },
+    };
+
+    // Render baru jika belum ada chart, atau panggil updateOptions jika data di Firebase berubah
+    if (!areaChart) {
+      areaChart = new ApexCharts(
+        document.querySelector("#area-chart"),
+        areaChartOptions
+      );
+      areaChart.render();
+    } else {
+      areaChart.updateOptions(areaChartOptions);
+    }
+  });
+}
+
+// Aktifkan pemantauan grafik histori
+tampilkanGrafikHistori();
